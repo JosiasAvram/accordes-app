@@ -1,0 +1,55 @@
+Title: Demo Tres
+Artist: Banda de Prueba
+Genre: folklore
+Key: D
+Capo: 2
+Difficulty: avanzado
+
+[Intro]
+D   A   Bm   G
+
+[Verso 1]
+D                A
+Tercera de las pruebas
+Bm               G
+Esta vez en tono de re
+D                A
+Con cejilla en segundo traste
+Bm               G
+Para sonar mas grave todavia
+
+[Verso 2]
+D                A
+Acordes con septima ahora
+Bm               G
+Para sumarle complejidad
+D7               A7
+Para ver que funcionen
+Bm               G
+Todos los sufijos del parser
+
+[Estribillo]
+G            D
+Tono medio dos semitonos
+A            Bm
+Mas alto del original
+G            D
+Probar la transposicion
+A            D
+Ese es el plan
+
+[Solo]
+D   A   Bm   G   D   A   Bm   G
+
+[Estribillo]
+G            D
+Tono medio dos semitonos
+A            Bm
+Mas alto del original
+G            D
+Probar la transposicion
+A            D
+Ese es el plan
+
+[Outro]
+D   A   Bm   G   D

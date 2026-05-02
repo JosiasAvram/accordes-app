@@ -1,0 +1,52 @@
+Title: Demo Uno
+Artist: Banda de Prueba
+Genre: rock
+Key: G
+Capo: 0
+Difficulty: principiante
+
+[Intro]
+G   D   Em   C
+
+[Verso 1]
+G              D
+Esta es una cancion inventada
+Em             C
+Para probar el sistema
+G              D
+Acordes y letras alineados
+Em             C
+Funcionando correctamente
+
+[Estribillo]
+C            G
+Demo de prueba uno dos tres
+D            Em
+Solo texto generico
+C            G
+Sin contenido real ninguno
+D            G
+Solamente para testear
+
+[Verso 2]
+G              D
+Si lees esto en la app
+Em             C
+Es porque todo funciona
+G              D
+La transposicion ya anda
+Em             C
+Y los acordes se muestran
+
+[Estribillo]
+C            G
+Demo de prueba uno dos tres
+D            Em
+Solo texto generico
+C            G
+Sin contenido real ninguno
+D            G
+Solamente para testear
+
+[Outro]
+G   D   Em   C   G

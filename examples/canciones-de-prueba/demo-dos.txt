@@ -1,0 +1,62 @@
+Title: Demo Dos
+Artist: Banda de Prueba
+Genre: pop
+Key: C
+Capo: 0
+Difficulty: intermedio
+
+[Intro]
+C   Am   F   G
+
+[Verso 1]
+C               Am
+Segunda cancion de prueba
+F               G
+Para verificar el parser
+C               Am
+Acordes con barras tambien
+F               G
+Y diferentes secciones
+
+[Puente]
+Dm           Em
+Aca va un puente
+F            G
+Con cuatro acordes
+Dm           Em
+Antes del estribillo
+F            G7
+Vuelve la energia
+
+[Estribillo]
+Am          F
+Probando uno dos
+C           G
+Probando tres cuatro
+Am          F
+Letras inventadas
+C           G
+Para testear todo
+
+[Verso 2]
+C               Am
+Segunda estrofa demo
+F               G
+Igual que la primera
+C/G             Am
+Probamos slash chord
+F               G
+Para ver si funciona
+
+[Estribillo]
+Am          F
+Probando uno dos
+C           G
+Probando tres cuatro
+Am          F
+Letras inventadas
+C           G
+Para testear todo
+
+[Outro]
+C   Am   F   G   C

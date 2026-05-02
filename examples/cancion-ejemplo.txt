@@ -1,0 +1,36 @@
+Title: Titulo de la cancion
+Artist: Nombre del artista
+Genre: rock-nacional
+Key: C
+Capo: 0
+Difficulty: principiante
+
+[Intro]
+C    G    Am    F
+
+[Verso 1]
+C             G
+Primera linea de letra de prueba
+Am            F
+Segunda linea de letra de prueba
+
+[Estribillo]
+F          C
+Linea del estribillo uno
+G          Am
+Linea del estribillo dos
+
+[Verso 2]
+C             G
+Tercera linea de letra de prueba
+Am            F
+Cuarta linea de letra de prueba
+
+[Estribillo]
+F          C
+Linea del estribillo uno
+G          Am
+Linea del estribillo dos
+
+[Outro]
+C    G    Am    F    C

@@ -1,0 +1,72 @@
+{
+  "_comentario": "Plantilla de canción. Reemplazá cada campo con tu contenido. Borrá los campos que empiezan con _",
+
+  "title": "Título de la canción",
+  "artist": "Nombre del artista",
+  "genre": "rock-nacional",
+  "originalKey": "C",
+  "capo": 0,
+  "difficulty": "principiante",
+  "status": "published",
+
+  "_formato_secciones": "type puede ser: intro, verso, estribillo, puente, solo, outro, otro. label es opcional (ej: 'Verso 1')",
+  "_formato_chords": "chord es el acorde (C, G7, Am, F#m, etc). position es el ÍNDICE DE CARACTER (empezando en 0) en la línea de letra de abajo donde debe ir el acorde",
+
+  "sections": [
+    {
+      "type": "intro",
+      "label": "Intro",
+      "lines": [
+        {
+          "text": "",
+          "chords": [
+            { "chord": "C", "position": 0 },
+            { "chord": "G", "position": 4 },
+            { "chord": "Am", "position": 8 },
+            { "chord": "F", "position": 13 }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "verso",
+      "label": "Verso 1",
+      "lines": [
+        {
+          "text": "Primera linea de letra de prueba aqui",
+          "chords": [
+            { "chord": "C", "position": 0 },
+            { "chord": "G", "position": 14 }
+          ]
+        },
+        {
+          "text": "Segunda linea de letra de prueba aqui",
+          "chords": [
+            { "chord": "Am", "position": 0 },
+            { "chord": "F", "position": 14 }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "estribillo",
+      "label": "Estribillo",
+      "lines": [
+        {
+          "text": "Linea del estribillo numero uno",
+          "chords": [
+            { "chord": "F", "position": 0 },
+            { "chord": "C", "position": 11 }
+          ]
+        },
+        {
+          "text": "Linea del estribillo numero dos",
+          "chords": [
+            { "chord": "G", "position": 0 },
+            { "chord": "Am", "position": 11 }
+          ]
+        }
+      ]
+    }
+  ]
+}
