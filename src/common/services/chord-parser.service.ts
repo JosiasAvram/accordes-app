@@ -121,24 +121,31 @@ export class ChordParserService {
   }
 
   /**
-   * Una línea se considera "de acordes" si todos sus tokens (separados por
-   * espacios) son acordes válidos O separadores comunes (-, –, →, (, ), :, ->).
-   * Esto permite reconocer líneas como "D – A/C# – Bm" o "(D - E)".
+   * Una línea se considera "de acordes" si:
+   *  - Tiene al menos 1 acorde válido
+   *  - El resto son separadores (-, –, →, (, ), etc) o anotaciones cortas
+   *    como (4x), (intro), x2, etc.
+   *
+   * Heuristica: si >=50% de los tokens son acordes válidos, es chord line.
    */
   private isChordLine(line: string): boolean {
     const tokens = line.trim().split(/\s+/).filter(Boolean);
     if (tokens.length === 0) return false;
-    // Tiene que tener AL MENOS un acorde válido para considerarse línea de acordes
-    let hasChord = false;
+
+    let chordCount = 0;
+    let unknownCount = 0;
     for (const t of tokens) {
       if (CHORD_RE.test(t)) {
-        hasChord = true;
-      } else if (!SEPARATOR_RE.test(t)) {
-        // Si el token no es un acorde NI un separador, no es línea de acordes
-        return false;
+        chordCount++;
+      } else if (SEPARATOR_RE.test(t) || ANNOTATION_RE.test(t)) {
+        // separadores y anotaciones no cuentan en contra
+      } else {
+        unknownCount++;
       }
     }
-    return hasChord;
+    if (chordCount === 0) return false;
+    // Si hay más tokens "desconocidos" que acordes, no es chord line
+    return chordCount >= unknownCount;
   }
 
   /**
@@ -166,3 +173,8 @@ const CHORD_RE = /^[(\[]?[A-G][#b]?[a-zA-Z0-9/#b+]*[)\]]?$/;
 // Separadores aceptados entre acordes en lineas de progresion:
 // guion, em-dash, flecha, dos puntos, parentesis sueltos, etc.
 const SEPARATOR_RE = /^[-–—→>(){}\[\]:|.,;/]+$/;
+
+// Anotaciones tipicas en lineas de acordes (lista explicita para evitar
+// que cualquier palabra corta se confunda con anotacion).
+const ANNOTATION_RE =
+  /^[(\[]?(?:[0-9]+x|x[0-9]+|N\.?C\.?|intro|verso|verse|chorus|coro|estribillo|puente|bridge|solo|outro|final|fin|riff|slide|hammer|bis|loop|tag|ad-?lib|repeat|repetir|vuelta|segunda|primera|tercera|cuarta|fade|tacet)[)\]]?$/i;
