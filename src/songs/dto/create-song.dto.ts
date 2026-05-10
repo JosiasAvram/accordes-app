@@ -22,6 +22,16 @@ export class ChordPositionDto {
   position!: number;
 }
 
+export class InlineSegmentDto {
+  @ApiProperty({ enum: ['text', 'chord'] })
+  @IsEnum(['text', 'chord'])
+  type!: string;
+
+  @ApiProperty({ example: 'A' })
+  @IsString()
+  content!: string;
+}
+
 export class SongLineDto {
   @ApiProperty({ example: 'Texto de la línea de la canción' })
   @IsString()
@@ -32,6 +42,13 @@ export class SongLineDto {
   @ValidateNested({ each: true })
   @Type(() => ChordPositionDto)
   chords!: ChordPositionDto[];
+
+  @ApiPropertyOptional({ type: [InlineSegmentDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InlineSegmentDto)
+  inlineSegments?: InlineSegmentDto[];
 }
 
 export class SongSectionDto {

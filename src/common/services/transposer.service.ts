@@ -62,11 +62,19 @@ export class TransposerService {
 
   /**
    * Transpone una canción completa (estructura sections/lines/chords).
+   * También transpone los segmentos inline si están presentes.
    */
-  transposeSong<T extends { sections: Array<{ lines: Array<{ chords: Array<{ chord: string; position: number }> }> }>; originalKey?: string }>(
-    song: T,
-    semitones: number,
-  ): T {
+  transposeSong<
+    T extends {
+      sections: Array<{
+        lines: Array<{
+          chords: Array<{ chord: string; position: number }>;
+          inlineSegments?: Array<{ type: string; content: string }>;
+        }>;
+      }>;
+      originalKey?: string;
+    },
+  >(song: T, semitones: number): T {
     if (semitones === 0) return song;
 
     const useFlats = this.shouldUseFlats(song.originalKey, semitones);
@@ -79,6 +87,13 @@ export class TransposerService {
           ...c,
           chord: this.transposeChord(c.chord, semitones, useFlats),
         })),
+        inlineSegments: line.inlineSegments
+          ? line.inlineSegments.map((seg) =>
+              seg.type === 'chord'
+                ? { ...seg, content: this.transposeChord(seg.content, semitones, useFlats) }
+                : seg,
+            )
+          : line.inlineSegments,
       })),
     }));
 

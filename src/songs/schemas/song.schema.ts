@@ -17,6 +17,21 @@ export class ChordPosition {
   position!: number; // índice de caracter en `text`
 }
 
+/**
+ * Segmento de una linea con acordes "inline" (cuando una linea es solo
+ * acordes pero contiene anotaciones intermedias como "(4x)" o "-> segunda vuelta").
+ * En vez de perder el texto, lo guardamos pre-segmentado para poder renderizarlo
+ * con los acordes coloreados y el resto como texto.
+ */
+@Schema({ _id: false })
+export class InlineSegment {
+  @Prop({ required: true, enum: ['text', 'chord'] })
+  type!: string;
+
+  @Prop({ required: true })
+  content!: string;
+}
+
 @Schema({ _id: false })
 export class SongLine {
   @Prop({ default: '' })
@@ -24,6 +39,14 @@ export class SongLine {
 
   @Prop({ type: [ChordPosition], default: [] })
   chords!: ChordPosition[];
+
+  /**
+   * Si esta presente, indica que la linea es solo de acordes (sin letra debajo)
+   * y debe renderizarse "inline" con cada segmento alternando texto y acordes.
+   * Cuando esta ausente: la linea es chord+letra estandar (renderizado clasico).
+   */
+  @Prop({ type: [InlineSegment], default: undefined })
+  inlineSegments?: InlineSegment[];
 }
 
 @Schema({ _id: false })

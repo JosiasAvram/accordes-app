@@ -1,8 +1,14 @@
 import { Injectable } from '@nestjs/common';
 
+interface InlineSegment {
+  type: 'text' | 'chord';
+  content: string;
+}
+
 interface ParsedLine {
   text: string;
   chords: Array<{ chord: string; position: number }>;
+  inlineSegments?: InlineSegment[];
 }
 
 interface ParsedSection {
@@ -72,11 +78,14 @@ export class ChordParserService {
         continue;
       }
 
-      // Línea de solo acordes (ej: intro, solo)
+      // Línea de solo acordes (ej: intro, solo, anotaciones inline)
+      // Guardamos el texto original Y los segmentos pre-parseados para poder
+      // renderizar inline (con texto entre acordes, ej: "A -> segunda vuelta A/C#")
       if (this.isChordLine(line)) {
         currentSection.lines.push({
-          text: '',
+          text: line,
           chords: this.extractChords(line),
+          inlineSegments: this.parseInlineSegments(line),
         });
         i++;
         continue;
@@ -146,6 +155,31 @@ export class ChordParserService {
     if (chordCount === 0) return false;
     // Si hay más tokens "desconocidos" que acordes, no es chord line
     return chordCount >= unknownCount;
+  }
+
+  /**
+   * Divide una linea de acordes en segmentos alternados de tipo 'text' y 'chord'.
+   * Sirve para renderizar lineas como "A -> segunda vuelta A/C#" preservando todo.
+   */
+  private parseInlineSegments(line: string): InlineSegment[] {
+    const segments: InlineSegment[] = [];
+    const tokens = line.split(/(\s+)/);
+    let buffer = '';
+    for (const token of tokens) {
+      if (token.trim() && CHORD_RE.test(token)) {
+        if (buffer) {
+          segments.push({ type: 'text', content: buffer });
+          buffer = '';
+        }
+        segments.push({ type: 'chord', content: token });
+      } else {
+        buffer += token;
+      }
+    }
+    if (buffer) {
+      segments.push({ type: 'text', content: buffer });
+    }
+    return segments;
   }
 
   /**
