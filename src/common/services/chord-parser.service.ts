@@ -122,23 +122,35 @@ export class ChordParserService {
 
   /**
    * Una línea se considera "de acordes" si todos sus tokens (separados por
-   * espacios) parecen acordes válidos.
+   * espacios) son acordes válidos O separadores comunes (-, –, →, (, ), :, ->).
+   * Esto permite reconocer líneas como "D – A/C# – Bm" o "(D - E)".
    */
   private isChordLine(line: string): boolean {
     const tokens = line.trim().split(/\s+/).filter(Boolean);
     if (tokens.length === 0) return false;
-    return tokens.every((t) => /^[A-G][#b]?[a-zA-Z0-9/#b+]*$/.test(t));
+    // Tiene que tener AL MENOS un acorde válido para considerarse línea de acordes
+    let hasChord = false;
+    for (const t of tokens) {
+      if (CHORD_RE.test(t)) {
+        hasChord = true;
+      } else if (!SEPARATOR_RE.test(t)) {
+        // Si el token no es un acorde NI un separador, no es línea de acordes
+        return false;
+      }
+    }
+    return hasChord;
   }
 
   /**
    * Extrae acordes con su posición exacta de columna.
+   * Ignora separadores y otros tokens no-acorde.
    */
   private extractChords(line: string): Array<{ chord: string; position: number }> {
     const result: Array<{ chord: string; position: number }> = [];
     const tokens = line.split(/(\s+)/);
     let column = 0;
     for (const token of tokens) {
-      if (token.trim() && /^[A-G][#b]?[a-zA-Z0-9/#b+]*$/.test(token)) {
+      if (token.trim() && CHORD_RE.test(token)) {
         result.push({ chord: token, position: column });
       }
       column += token.length;
@@ -146,3 +158,11 @@ export class ChordParserService {
     return result;
   }
 }
+
+// Regex de un acorde: nota (A-G) opcional #/b, sufijos (m, m7, maj7, sus, etc.)
+// y opcional bajo (/G). Permite tambien parentesis/corchetes envolviendo el acorde.
+const CHORD_RE = /^[(\[]?[A-G][#b]?[a-zA-Z0-9/#b+]*[)\]]?$/;
+
+// Separadores aceptados entre acordes en lineas de progresion:
+// guion, em-dash, flecha, dos puntos, parentesis sueltos, etc.
+const SEPARATOR_RE = /^[-–—→>(){}\[\]:|.,;/]+$/;
