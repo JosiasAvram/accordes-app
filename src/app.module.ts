@@ -8,6 +8,7 @@ import { ChordsModule } from './chords/chords.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { GenresModule } from './genres/genres.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { GenresModule } from './genres/genres.module';
     SongsModule,
     ChordsModule,
     GenresModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

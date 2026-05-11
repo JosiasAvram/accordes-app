@@ -12,12 +12,14 @@ import { UpdateSongDto } from './dto/update-song.dto';
 import { SearchSongsDto } from './dto/search-songs.dto';
 import { TransposerService } from '../common/services/transposer.service';
 import { slugify } from '../common/utils/slugify';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class SongsService {
   constructor(
     @InjectModel(Song.name) private readonly songModel: Model<SongDocument>,
     private readonly transposer: TransposerService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // ── Lectura pública ──────────────────────────────────
@@ -166,6 +168,9 @@ export class SongsService {
       .lean()
       .exec();
     if (!updated) throw new NotFoundException('Canción no encontrada');
+
+    // Marcar que la lista cambio para que aparezca el boton "Notificar" en todos los celulares
+    await this.notifications.markListChanged();
     return updated;
   }
 
