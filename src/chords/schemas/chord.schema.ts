@@ -3,16 +3,25 @@ import { HydratedDocument } from 'mongoose';
 
 export type ChordDocument = HydratedDocument<Chord>;
 
-@Schema({ timestamps: true, collection: 'chords' })
-export class Chord {
-  @Prop({ required: true, trim: true })
-  name!: string; // "C", "Am", "F#m7"
-
-  @Prop({ required: true, default: 'guitar', enum: ['guitar', 'ukulele', 'piano'] })
-  instrument!: string;
+/**
+ * Una posicion/voicing de un acorde — la forma fisica concreta de tocarlo
+ * en un instrumento. Un mismo acorde (ej: "C") tiene MUCHAS posiciones validas:
+ *  - Abierto: -1, 3, 2, 0, 1, 0
+ *  - Cejilla en 3°: 3, 3, 5, 5, 5, 3
+ *  - Cejilla en 8°: -1, -1, 10, 9, 8, 8
+ *  ... etc.
+ */
+@Schema({ _id: false })
+export class ChordVoicing {
+  /**
+   * Etiqueta humana de esta posicion (ej: "Abierto", "Cejilla 3°").
+   * Opcional — si no se setea, en el frontend se muestra como "Posicion N".
+   */
+  @Prop({ trim: true })
+  label?: string;
 
   /**
-   * 6 cuerdas de la guitarra (Mi6 → Mi1, de la más grave a la más aguda).
+   * 6 cuerdas (Mi6 → Mi1, de la mas grave a la mas aguda).
    *  -1 → cuerda silenciada (no se toca)
    *   0 → cuerda al aire
    *   1+ → traste donde va el dedo
@@ -21,12 +30,9 @@ export class Chord {
   frets!: number[];
 
   /**
-   * Qué dedo usa cada cuerda.
+   * Que dedo usa cada cuerda.
    *  0 → al aire o silenciada
-   *  1 → índice
-   *  2 → medio
-   *  3 → anular
-   *  4 → meñique
+   *  1 → indice, 2 → medio, 3 → anular, 4 → menique
    */
   @Prop({ type: [Number], default: [] })
   fingers!: number[];
@@ -39,6 +45,23 @@ export class Chord {
 
   @Prop({ enum: ['principiante', 'intermedio', 'avanzado'], default: 'principiante' })
   difficulty!: string;
+}
+
+@Schema({ timestamps: true, collection: 'chords' })
+export class Chord {
+  @Prop({ required: true, trim: true })
+  name!: string; // "C", "Am", "F#m7"
+
+  @Prop({ required: true, default: 'guitar', enum: ['guitar', 'ukulele', 'piano'] })
+  instrument!: string;
+
+  /**
+   * Lista de posiciones validas para este acorde.
+   * El frontend muestra la primera por default y permite navegar con flechas
+   * para ver las demas inversiones / posiciones / digitaciones alternativas.
+   */
+  @Prop({ type: [ChordVoicing], default: [] })
+  voicings!: ChordVoicing[];
 
   @Prop({ enum: ['mayor', 'menor', 'septima', 'sus', 'dim', 'aug', 'otro'], default: 'mayor' })
   category!: string;

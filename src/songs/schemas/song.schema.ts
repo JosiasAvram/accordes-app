@@ -101,6 +101,14 @@ export class Song {
 
   @Prop({ enum: ['draft', 'published'], default: 'published', index: true })
   status!: string;
+
+  /**
+   * Indica si esta cancion esta en la "Lista" compartida (setlist global).
+   * Cualquier usuario con la app puede agregar/quitar canciones desde el celular.
+   * Se sincroniza entre todos los dispositivos.
+   */
+  @Prop({ default: false, index: true })
+  inList!: boolean;
 }
 
 export const SongSchema = SchemaFactory.createForClass(Song);

@@ -140,4 +140,41 @@ export class SongsService {
     if (!result) throw new NotFoundException('Canción no encontrada');
     return { deleted: true, id };
   }
+
+  // ── Lista compartida (setlist global) ────────────────────────
+
+  async toggleList(id: string, inList?: boolean) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException('Canción no encontrada');
+    }
+    // Si no nos pasan el valor, hacemos toggle del actual
+    let nextValue: boolean;
+    if (typeof inList === 'boolean') {
+      nextValue = inList;
+    } else {
+      const current = await this.songModel
+        .findById(id)
+        .select('inList')
+        .lean()
+        .exec();
+      if (!current) throw new NotFoundException('Canción no encontrada');
+      nextValue = !current.inList;
+    }
+    const updated = await this.songModel
+      .findByIdAndUpdate(id, { inList: nextValue }, { new: true })
+      .select('_id title artist inList')
+      .lean()
+      .exec();
+    if (!updated) throw new NotFoundException('Canción no encontrada');
+    return updated;
+  }
+
+  async listIds(): Promise<string[]> {
+    const result = await this.songModel
+      .find({ inList: true, status: 'published' })
+      .select('_id')
+      .lean()
+      .exec();
+    return result.map((r) => r._id.toString());
+  }
 }

@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -62,6 +63,26 @@ export class SongsController {
     @Query('semitones', ParseIntPipe) semitones: number,
   ) {
     return this.songsService.transpose(id, semitones);
+  }
+
+  // ── Lista compartida (publica — sin auth) ────────────
+
+  @Get('list/ids')
+  @ApiOperation({ summary: 'IDs de las canciones en la Lista compartida' })
+  listIds() {
+    return this.songsService.listIds();
+  }
+
+  @Patch(':id/toggle-list')
+  @ApiOperation({
+    summary:
+      'Agrega/quita la canción de la Lista compartida. Opcionalmente recibe { inList: true|false }',
+  })
+  toggleList(
+    @Param('id') id: string,
+    @Body() body: { inList?: boolean } = {},
+  ) {
+    return this.songsService.toggleList(id, body?.inList);
   }
 
   // ── Admin ────────────────────────────────────────────
