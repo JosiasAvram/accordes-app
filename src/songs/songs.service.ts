@@ -14,6 +14,38 @@ import { TransposerService } from '../common/services/transposer.service';
 import { slugify } from '../common/utils/slugify';
 import { NotificationsService } from '../notifications/notifications.service';
 
+// ── Helpers de busqueda ─────────────────────────────────────
+
+/**
+ * Escapa caracteres especiales de regex en el texto que escribe el usuario.
+ * Necesario para que si alguien busca "(", ".", "+", etc., el regex no se rompa.
+ */
+function escapeRegex(s: string): string {
+  return s.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+}
+
+/**
+ * Convierte un termino normalizado (sin acentos, lowercase) en un patron regex
+ * que matchea esa palabra con o sin acentos.
+ *
+ * Ejemplo: "el" → "[eéèêë][lL]"  → matchea "el", "él", "El", etc.
+ *          "cancion" → "[cC][aáàâäã][nN][cC][iíìîï][oóòôöõ][nñ]" → matchea "canción" o "cancion"
+ */
+function accentInsensitivePattern(term: string): string {
+  const vowelMap: Record<string, string> = {
+    a: '[aáàâäãAÁÀÂÄÃ]',
+    e: '[eéèêëEÉÈÊË]',
+    i: '[iíìîïIÍÌÎÏ]',
+    o: '[oóòôöõOÓÒÔÖÕ]',
+    u: '[uúùûüUÚÙÛÜ]',
+    n: '[nñNÑ]',
+  };
+  return escapeRegex(term)
+    .split('')
+    .map((c) => vowelMap[c.toLowerCase()] ?? c)
+    .join('');
+}
+
 @Injectable()
 export class SongsService {
   constructor(
@@ -33,19 +65,38 @@ export class SongsService {
     }
 
     if (q && q.trim()) {
-      // Búsqueda full-text con score
-      filter.$text = { $search: q };
+      // Buscamos con AND: todos los terminos que escribio el usuario deben
+      // aparecer en el title o el artist. Cada termino es accent-insensitive
+      // (matchea "el" con "Él", "canción" con "cancion", etc.) y case-insensitive.
+      // Esto evita el problema de la busqueda OR de MongoDB $text que devuelve
+      // cualquier cancion que contenga UNA sola palabra de la query.
+      const terms = q
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase());
+
+      if (terms.length > 0) {
+        filter.$and = terms.map((term) => ({
+          $or: [
+            { title: { $regex: accentInsensitivePattern(term), $options: 'i' } },
+            { artist: { $regex: accentInsensitivePattern(term), $options: 'i' } },
+          ],
+        }));
+      }
     }
 
     const skip = (page - 1) * limit;
 
+    // Sin $text → ordenamos por createdAt desc por default; el frontend
+    // re-ordena segun el chip activo (A-Z, Artista, etc).
     const [data, total] = await Promise.all([
       this.songModel
-        .find(filter, q ? { score: { $meta: 'textScore' } } : {})
-        .sort(q ? { score: { $meta: 'textScore' } } : { createdAt: -1 })
+        .find(filter)
+        .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .select('-sections') // listado liviano: sin las letras completas
+        .select('-sections')
         .lean()
         .exec(),
       this.songModel.countDocuments(filter),
