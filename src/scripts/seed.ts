@@ -231,22 +231,25 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const chordModel = app.get<Model<Chord>>(getModelToken(Chord.name));
 
-  // 1) Admin
+  // 1) Admin — ahora identificado por username (no email).
+  // ADMIN_EMAIL queda por compat retro pero se ignora en el login.
+  const adminUsername = config.get<string>('ADMIN_USERNAME') ?? 'admin';
   const adminEmail = config.get<string>('ADMIN_EMAIL') ?? 'admin@acordes-app.com';
-  const adminPassword = config.get<string>('ADMIN_PASSWORD') ?? 'cambiar-en-primer-login';
-  const adminName = config.get<string>('ADMIN_NAME') ?? 'Admin';
+  const adminPassword = config.get<string>('ADMIN_PASSWORD') ?? 'admin';
+  const adminName = config.get<string>('ADMIN_NAME') ?? 'Administrador';
 
-  const existingAdmin = await usersService.findByEmail(adminEmail);
+  const existingAdmin = await usersService.findByUsername(adminUsername);
   if (!existingAdmin) {
     await usersService.create({
+      username: adminUsername,
       email: adminEmail,
       password: adminPassword,
       name: adminName,
       role: 'admin',
     });
-    console.log(`OK Admin creado: ${adminEmail}`);
+    console.log(`OK Admin creado: @${adminUsername}`);
   } else {
-    console.log(`ya existe Admin: ${adminEmail}`);
+    console.log(`ya existe Admin: @${adminUsername}`);
   }
 
   // 2) Acordes con voicings — UPSERT (actualiza si ya existe, crea si no)
