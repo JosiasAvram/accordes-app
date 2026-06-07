@@ -34,6 +34,7 @@ export class ReunionController {
     @Body() body: ReunionAssignments,
   ) {
     const role = req.user?.role;
+    // Admin siempre puede; el resto solo si es lider.
     if (role !== 'admin' && role !== 'lider') {
       throw new ForbiddenException(
         'Solo el admin o el líder pueden modificar la reunión.',
