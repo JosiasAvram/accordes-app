@@ -5,8 +5,14 @@ export type UserDocument = HydratedDocument<User>;
 
 @Schema({ timestamps: true, collection: 'users' })
 export class User {
-  @Prop({ required: true, unique: true, lowercase: true, trim: true })
-  email!: string;
+  // Username como identificador principal del login (unique, lowercase).
+  @Prop({ required: true, unique: true, lowercase: true, trim: true, index: true })
+  username!: string;
+
+  // Email queda opcional — lo conservamos por si lo usamos a futuro para reset
+  // de contraseña, etc. NO es el identificador de login.
+  @Prop({ lowercase: true, trim: true, sparse: true })
+  email?: string;
 
   @Prop({ required: true })
   passwordHash!: string;
@@ -14,9 +20,19 @@ export class User {
   @Prop({ required: true, trim: true })
   name!: string;
 
+  // Apellido (opcional para el admin seedeado, requerido al registrarse desde la app).
+  @Prop({ trim: true })
+  lastName?: string;
+
+  // Instrumento que toca el usuario (selector cerrado).
   @Prop({
-    enum: ['admin', 'contributor', 'user'],
-    default: 'user',
+    enum: ['guitarra', 'bajo', 'piano', 'voz', 'bateria'],
+  })
+  instrument?: string;
+
+  @Prop({
+    enum: ['admin', 'contributor', 'user', 'miembro'],
+    default: 'miembro',
     index: true,
   })
   role!: string;

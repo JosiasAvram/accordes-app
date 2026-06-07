@@ -6,19 +6,23 @@ import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from './schemas/user.schema';
 
 interface CreateUserInput {
-  email: string;
+  username: string;
   password: string;
   name: string;
-  role?: 'admin' | 'contributor' | 'user';
+  lastName?: string;
+  email?: string;
+  instrument?: 'guitarra' | 'bajo' | 'piano' | 'voz' | 'bateria';
+  role?: 'admin' | 'contributor' | 'user' | 'miembro';
 }
 
-// Tipo público de usuario (sin password hash). Lo usamos como tipo de retorno
-// explícito para evitar que TS intente inferir un tipo gigante que no puede
-// serializar (los tipos internos de Mongoose son enormes).
+// Tipo público de usuario (sin password hash).
 export interface SafeUser {
   _id: unknown;
-  email: string;
+  username: string;
+  email?: string;
   name: string;
+  lastName?: string;
+  instrument?: string;
   role: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -30,33 +34,41 @@ export class UsersService {
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
   ) {}
 
-  async findByEmail(email: string): Promise<UserDocument | null> {
-    return this.userModel.findOne({ email: email.toLowerCase() }).exec();
+  async findByUsername(username: string): Promise<UserDocument | null> {
+    return this.userModel.findOne({ username: username.toLowerCase() }).exec();
   }
 
   async findById(id: string): Promise<SafeUser> {
     const user = await this.userModel.findById(id).lean().exec();
     if (!user) throw new NotFoundException('Usuario no encontrado');
-    // No devolver el hash
     const { passwordHash, ...rest } = user;
     return rest as SafeUser;
   }
 
   async create(input: CreateUserInput): Promise<SafeUser> {
+    // Si el username ya existe, lanzamos error para que el controller responda
+    // con un mensaje claro.
+    const existing = await this.findByUsername(input.username);
+    if (existing) {
+      throw new Error(`El usuario "${input.username}" ya existe`);
+    }
     const passwordHash = await bcrypt.hash(input.password, 10);
     const created = await this.userModel.create({
-      email: input.email.toLowerCase(),
+      username: input.username.toLowerCase(),
       passwordHash,
       name: input.name,
-      role: input.role ?? 'user',
+      lastName: input.lastName,
+      email: input.email?.toLowerCase(),
+      instrument: input.instrument,
+      role: input.role ?? 'miembro',
     });
     const obj = created.toObject();
     const { passwordHash: _, ...rest } = obj;
     return rest as SafeUser;
   }
 
-  async validatePassword(email: string, password: string): Promise<UserDocument | null> {
-    const user = await this.findByEmail(email);
+  async validatePassword(username: string, password: string): Promise<UserDocument | null> {
+    const user = await this.findByUsername(username);
     if (!user) return null;
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return null;
