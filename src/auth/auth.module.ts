@@ -17,7 +17,10 @@ import { UsersModule } from '../users/users.module';
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET') ?? 'default-secret',
         signOptions: {
-          expiresIn: config.get<string>('JWT_EXPIRES_IN') ?? '7d',
+          // 30 dias para sesiones persistidas (con "Mantener sesion iniciada").
+          // Si el user NO tildo la casilla, el frontend no persiste el token en
+          // AsyncStorage, asi que al cerrar la app pierde la sesion igual.
+          expiresIn: config.get<string>('JWT_EXPIRES_IN') ?? '30d',
         },
       }),
     }),

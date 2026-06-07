@@ -31,7 +31,7 @@ export class User {
   instrument?: string;
 
   @Prop({
-    enum: ['admin', 'contributor', 'user', 'miembro'],
+    enum: ['admin', 'contributor', 'user', 'miembro', 'lider'],
     default: 'miembro',
     index: true,
   })
