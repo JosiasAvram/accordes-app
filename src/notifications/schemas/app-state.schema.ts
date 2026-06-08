@@ -25,6 +25,19 @@ export class AppState {
    */
   @Prop({ default: () => new Date() })
   lastNotificationAction!: Date;
+
+  /**
+   * Reunión: ultima vez que se modificaron las asignaciones.
+   */
+  @Prop({ default: () => new Date() })
+  lastReunionChange!: Date;
+
+  /**
+   * Reunión: ultima vez que se notificó o se descartó el botón.
+   * El botón es visible cuando lastReunionChange > lastReunionNotificationAction.
+   */
+  @Prop({ default: () => new Date() })
+  lastReunionNotificationAction!: Date;
 }
 
 export const AppStateSchema = SchemaFactory.createForClass(AppState);

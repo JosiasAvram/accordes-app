@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { GenresModule } from './genres/genres.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReunionModule } from './reunion/reunion.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ReunionModule } from './reunion/reunion.module';
     GenresModule,
     NotificationsModule,
     ReunionModule,
+    EventsModule,
   ],
 })
 export class AppModule {}

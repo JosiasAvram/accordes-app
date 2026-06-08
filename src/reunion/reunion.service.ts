@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
 import { Reunion, ReunionDocument } from './schemas/reunion.schema';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export const REUNION_SLOTS = [
   'dirige',
@@ -36,6 +37,7 @@ export interface ReunionAssignments {
 export class ReunionService {
   constructor(
     @InjectModel(Reunion.name) private readonly model: Model<ReunionDocument>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   // Devuelve el documento de la reunion actual, creándolo si no existe.
@@ -69,6 +71,9 @@ export class ReunionService {
       { $set: updates },
       { upsert: true },
     );
+    // Avisar al modulo de notificaciones para que en la app aparezca
+    // el boton "Notificar a todos" en la pantalla Reunion.
+    await this.notifications.markReunionChanged();
     return this.getCurrent();
   }
 }

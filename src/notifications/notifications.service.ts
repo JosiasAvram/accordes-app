@@ -50,6 +50,8 @@ export class NotificationsService {
     return {
       lastListChange: state.lastListChange,
       lastNotificationAction: state.lastNotificationAction,
+      lastReunionChange: state.lastReunionChange,
+      lastReunionNotificationAction: state.lastReunionNotificationAction,
     };
   }
 
@@ -67,17 +69,39 @@ export class NotificationsService {
       .exec();
   }
 
+  async markReunionChanged() {
+    await this.ensureState();
+    await this.stateModel
+      .updateOne({ key: 'global' }, { lastReunionChange: new Date() })
+      .exec();
+  }
+
+  async markReunionNotificationAction() {
+    await this.ensureState();
+    await this.stateModel
+      .updateOne(
+        { key: 'global' },
+        { lastReunionNotificationAction: new Date() },
+      )
+      .exec();
+  }
+
   // ── Envio de notificaciones ─────────────────────────
 
   /**
    * Manda una notificacion push a TODOS los dispositivos registrados (broadcast).
+   * El parametro `data` se incluye en el payload para que el frontend pueda
+   * deep-linkear a la pantalla correcta al tocar la notificacion.
    * Despues de enviar, actualiza lastNotificationAction.
    */
-  async sendToAll(title: string, body: string) {
+  async sendToAll(
+    title: string,
+    body: string,
+    data: Record<string, unknown> = { type: 'list-updated' },
+  ) {
     const tokens = await this.tokenModel.find({ active: true }).lean().exec();
     if (tokens.length === 0) {
       this.logger.warn('No hay tokens registrados, salteando push');
-      await this.markNotificationAction();
       return { sent: 0 };
     }
 
@@ -88,7 +112,7 @@ export class NotificationsService {
         sound: 'default',
         title,
         body,
-        data: { type: 'list-updated' },
+        data,
       }));
 
     const chunks = this.expo.chunkPushNotifications(messages);
@@ -119,7 +143,8 @@ export class NotificationsService {
       this.logger.log(`Desactivados ${invalidTokens.length} tokens invalidos`);
     }
 
-    await this.markNotificationAction();
+    // NO marcamos action aca — el caller decide cual contador actualizar
+    // (markNotificationAction para Lista, markReunionNotificationAction para Reunion).
     return { sent: messages.length, invalid: invalidTokens.length };
   }
 
