@@ -89,6 +89,33 @@ export class EventsController {
     return this.service.remove(id);
   }
 
+  // ── RSVP ──────────────────────────────────────────────
+
+  @Post(':id/rsvp')
+  @ApiOperation({ summary: 'Confirma asistencia (yes/no). Cualquier autenticado.' })
+  rsvp(
+    @Req() req: { user: { sub: string } },
+    @Param('id') id: string,
+    @Body() body: { status: 'yes' | 'no' },
+  ) {
+    if (!body || (body.status !== 'yes' && body.status !== 'no')) {
+      throw new BadRequestException('status debe ser "yes" o "no"');
+    }
+    return this.service.rsvp(id, req.user.sub, body.status);
+  }
+
+  @Get(':id/attendance')
+  @ApiOperation({
+    summary: 'Devuelve confirmados/no van/pendientes. Solo admin o lider.',
+  })
+  attendance(
+    @Req() req: { user: { role: string } },
+    @Param('id') id: string,
+  ) {
+    this.requireAdminOrLider(req.user?.role);
+    return this.service.getAttendance(id);
+  }
+
   // ── Helpers ────────────────────────────────────────────────
 
   private requireAdminOrLider(role: string | undefined) {
