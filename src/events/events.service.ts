@@ -29,6 +29,17 @@ export class EventsService {
       .exec();
   }
 
+  // Eventos pasados (historico), del mas reciente al mas viejo.
+  async listPast() {
+    const until = new Date();
+    until.setHours(0, 0, 0, 0);
+    return this.model
+      .find({ date: { $lt: until } })
+      .sort({ date: -1 })
+      .lean()
+      .exec();
+  }
+
   async create(input: EventInput) {
     const doc = await this.model.create({
       name: input.name,
