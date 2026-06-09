@@ -11,6 +11,7 @@ import { GenresModule } from './genres/genres.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ReunionModule } from './reunion/reunion.module';
 import { EventsModule } from './events/events.module';
+import { TracksModule } from './tracks/tracks.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { EventsModule } from './events/events.module';
     NotificationsModule,
     ReunionModule,
     EventsModule,
+    TracksModule,
   ],
 })
 export class AppModule {}
