@@ -17,7 +17,7 @@ import { Model } from 'mongoose';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User, UserDocument } from './schemas/user.schema';
 
-const VALID_ROLES = ['admin', 'lider', 'miembro', 'contributor', 'user'] as const;
+const VALID_ROLES = ['admin', 'lider', 'miembro', 'contributor', 'user', 'none'] as const;
 type Role = (typeof VALID_ROLES)[number];
 
 @ApiTags('users')
@@ -68,8 +68,12 @@ export class UsersController {
       );
     }
     // No permitir al admin sacarse a sí mismo el rol de admin (evita lockout).
+    // Esto cubre tambien el caso de auto-asignarse 'none', que dejaria al
+    // admin sin acceso a la pantalla de Roles para revertirlo.
     if (req.user.sub === id && body.role !== 'admin') {
-      throw new BadRequestException('No podés cambiar tu propio rol de admin.');
+      throw new BadRequestException(
+        'No podés sacarte el rol de admin a vos mismo. Pedile a otro admin que lo haga.',
+      );
     }
     const result = await this.userModel
       .updateOne({ _id: id }, { $set: { role: body.role } })
