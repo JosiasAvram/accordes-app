@@ -12,7 +12,7 @@ interface CreateUserInput {
   lastName?: string;
   email?: string;
   instrument?: 'guitarra' | 'bajo' | 'piano' | 'voz' | 'bateria';
-  role?: 'admin' | 'contributor' | 'user' | 'miembro';
+  role?: 'admin' | 'contributor' | 'user' | 'miembro' | 'lider' | 'none';
 }
 
 // Tipo público de usuario (sin password hash).

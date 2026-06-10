@@ -30,9 +30,11 @@ export class User {
   })
   instrument?: string;
 
+  // Rol 'none' es el ESTADO INICIAL al registrarse: el user no puede usar nada
+  // de la app hasta que el admin lo apruebe asignandole otro rol.
   @Prop({
-    enum: ['admin', 'contributor', 'user', 'miembro', 'lider'],
-    default: 'miembro',
+    enum: ['admin', 'contributor', 'user', 'miembro', 'lider', 'none'],
+    default: 'none',
     index: true,
   })
   role!: string;

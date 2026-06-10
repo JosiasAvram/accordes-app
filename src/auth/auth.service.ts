@@ -32,7 +32,9 @@ export class AuthService {
         lastName: dto.lastName,
         email: dto.email,
         instrument: dto.instrument,
-        role: 'miembro', // los registros desde la app siempre son miembros
+        // Los registros desde la app arrancan con rol 'none' = pendiente.
+        // El admin debe aprobarlos cambiandoles el rol a miembro/lider/etc.
+        role: 'none',
       });
       // Devolvemos también un token, así el usuario queda logueado al instante.
       const payload = {
