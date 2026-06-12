@@ -38,6 +38,14 @@ export class User {
     index: true,
   })
   role!: string;
+
+  // Version del token: se incrementa cada vez que queremos invalidar las
+  // sesiones del usuario (cambio de rol, force-logout, etc). El JWT firmado
+  // lleva esta version en su payload, y el JwtStrategy la compara contra la
+  // version actual de la DB en cada request. Si no coincide → 401 → la app
+  // hace logout automatico via su interceptor.
+  @Prop({ default: 0 })
+  tokenVersion!: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

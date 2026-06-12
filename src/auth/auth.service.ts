@@ -37,11 +37,13 @@ export class AuthService {
         role: 'none',
       });
       // Devolvemos también un token, así el usuario queda logueado al instante.
+      // tv=0 porque acabamos de crear el usuario (tokenVersion default = 0).
       const payload = {
         sub: (created._id as { toString(): string }).toString(),
         username: created.username,
         role: created.role,
         name: created.name,
+        tv: 0,
       };
       return {
         access_token: await this.jwtService.signAsync(payload),
@@ -71,12 +73,16 @@ export class AuthService {
     lastName?: string;
     instrument?: string;
     role: string;
+    tokenVersion?: number;
   }) {
+    // Incluimos tokenVersion para que el JwtStrategy pueda invalidar
+    // tokens viejos cuando el admin desloguea al usuario.
     const payload = {
       sub: user._id.toString(),
       username: user.username,
       role: user.role,
       name: user.name,
+      tv: user.tokenVersion ?? 0,
     };
     return {
       access_token: await this.jwtService.signAsync(payload),

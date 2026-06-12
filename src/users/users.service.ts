@@ -74,4 +74,26 @@ export class UsersService {
     if (!ok) return null;
     return user;
   }
+
+  /**
+   * Devuelve solo la tokenVersion actual del usuario.
+   * Query liviano (proyecta solo ese campo) porque se llama en cada request
+   * autenticado desde el JwtStrategy.
+   */
+  async getTokenVersion(id: string): Promise<number | null> {
+    const user = await this.userModel
+      .findById(id, 'tokenVersion')
+      .lean<{ tokenVersion?: number }>()
+      .exec();
+    if (!user) return null;
+    return user.tokenVersion ?? 0;
+  }
+
+  /**
+   * Incrementa la tokenVersion del usuario → invalida todos sus JWT existentes.
+   * El proximo request del cliente recibira 401, y la app hara logout sola.
+   */
+  async bumpTokenVersion(id: string): Promise<void> {
+    await this.userModel.updateOne({ _id: id }, { $inc: { tokenVersion: 1 } }).exec();
+  }
 }

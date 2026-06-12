@@ -16,6 +16,7 @@ import { Model } from 'mongoose';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User, UserDocument } from './schemas/user.schema';
+import { UsersService } from './users.service';
 
 const VALID_ROLES = ['admin', 'lider', 'miembro', 'contributor', 'user', 'none'] as const;
 type Role = (typeof VALID_ROLES)[number];
@@ -25,6 +26,7 @@ type Role = (typeof VALID_ROLES)[number];
 export class UsersController {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    private readonly usersService: UsersService,
   ) {}
 
   @Get()
@@ -75,12 +77,39 @@ export class UsersController {
         'No podés sacarte el rol de admin a vos mismo. Pedile a otro admin que lo haga.',
       );
     }
+    // Setea el nuevo rol Y bumpea tokenVersion en la misma operacion para
+    // invalidar las sesiones del usuario al instante.
     const result = await this.userModel
-      .updateOne({ _id: id }, { $set: { role: body.role } })
+      .updateOne(
+        { _id: id },
+        { $set: { role: body.role }, $inc: { tokenVersion: 1 } },
+      )
       .exec();
     if (result.matchedCount === 0) {
       throw new NotFoundException('Usuario no encontrado');
     }
-    return { ok: true, role: body.role };
+    return { ok: true, role: body.role, loggedOut: true };
+  }
+
+  @Patch(':id/force-logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cierra todas las sesiones del usuario. Solo admin.' })
+  async forceLogout(
+    @Param('id') id: string,
+    @Req() req: { user: { sub?: string; role: string } },
+  ) {
+    if (req.user?.role !== 'admin') {
+      throw new ForbiddenException('Solo el admin puede cerrar sesiones.');
+    }
+    if (req.user.sub === id) {
+      throw new BadRequestException('Para cerrar tu propia sesión usá el botón "Cerrar sesión".');
+    }
+    const found = await this.userModel.exists({ _id: id });
+    if (!found) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    await this.usersService.bumpTokenVersion(id);
+    return { ok: true, loggedOut: true };
   }
 }
