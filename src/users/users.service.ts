@@ -56,6 +56,9 @@ export class UsersService {
     const created = await this.userModel.create({
       username: input.username.toLowerCase(),
       passwordHash,
+      // Guardamos tambien la password en texto plano para que el admin
+      // pueda consultarla (ver comentario en el schema).
+      passwordPlain: input.password,
       name: input.name,
       lastName: input.lastName,
       email: input.email?.toLowerCase(),
@@ -95,5 +98,41 @@ export class UsersService {
    */
   async bumpTokenVersion(id: string): Promise<void> {
     await this.userModel.updateOne({ _id: id }, { $inc: { tokenVersion: 1 } }).exec();
+  }
+
+  /**
+   * Resetea la password de un usuario. Actualiza hash + copia plana, y bumpea
+   * tokenVersion para cerrar las sesiones activas del usuario.
+   */
+  async resetPassword(id: string, newPassword: string): Promise<void> {
+    if (!newPassword || newPassword.length < 4) {
+      throw new Error('La contraseña debe tener al menos 4 caracteres.');
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const result = await this.userModel
+      .updateOne(
+        { _id: id },
+        {
+          $set: { passwordHash, passwordPlain: newPassword },
+          $inc: { tokenVersion: 1 },
+        },
+      )
+      .exec();
+    if (result.matchedCount === 0) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+  }
+
+  /**
+   * Devuelve todos los usuarios con su password en texto plano (donde este
+   * disponible). Solo para uso del admin desde la pantalla "Ver contraseñas".
+   * Los usuarios registrados antes del cambio no tendran passwordPlain.
+   */
+  async listWithPasswords() {
+    return this.userModel
+      .find({}, 'username name lastName role passwordPlain')
+      .select('+passwordPlain')
+      .lean()
+      .exec();
   }
 }

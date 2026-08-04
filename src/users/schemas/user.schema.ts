@@ -17,6 +17,15 @@ export class User {
   @Prop({ required: true })
   passwordHash!: string;
 
+  // Copia en texto plano de la password. Se guarda ADEMAS del hash para que
+  // el admin pueda consultarla desde la app (endpoint protegido por master
+  // key). Esto es una decision deliberada porque la app es de uso personal
+  // y el admin necesita poder recuperar/decirle la password a un usuario
+  // que la olvido. No esta disponible para usuarios que se registraron
+  // antes de este cambio — solo se llena en registros nuevos y en resets.
+  @Prop({ select: false })
+  passwordPlain?: string;
+
   @Prop({ required: true, trim: true })
   name!: string;
 

@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Patch,
+  Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +21,11 @@ import { UsersService } from './users.service';
 
 const VALID_ROLES = ['admin', 'lider', 'miembro', 'contributor', 'user', 'none'] as const;
 type Role = (typeof VALID_ROLES)[number];
+
+// Master key para desbloquear el endpoint de "Ver contraseñas". Se puede
+// sobreescribir por env var ADMIN_MASTER_KEY. Default: la que definio el
+// dueño de la app.
+const ADMIN_MASTER_KEY = process.env.ADMIN_MASTER_KEY ?? '35531716';
 
 @ApiTags('users')
 @Controller('users')
@@ -111,5 +117,62 @@ export class UsersController {
     }
     await this.usersService.bumpTokenVersion(id);
     return { ok: true, loggedOut: true };
+  }
+
+  @Patch(':id/password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Resetea la contraseña de un usuario. Solo admin.' })
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() body: { password: string },
+    @Req() req: { user: { sub?: string; role: string } },
+  ) {
+    if (req.user?.role !== 'admin') {
+      throw new ForbiddenException('Solo el admin puede resetear contraseñas.');
+    }
+    if (!body || typeof body.password !== 'string' || body.password.length < 4) {
+      throw new BadRequestException('La contraseña debe tener al menos 4 caracteres.');
+    }
+    try {
+      await this.usersService.resetPassword(id, body.password);
+    } catch (err) {
+      if (err instanceof NotFoundException) throw err;
+      const msg = err instanceof Error ? err.message : 'No se pudo resetear la contraseña.';
+      throw new BadRequestException(msg);
+    }
+    return { ok: true, loggedOut: true };
+  }
+
+  @Post('passwords')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Devuelve el listado de contraseñas de los usuarios (uso admin, protegido por master key en el body).',
+  })
+  async listPasswords(
+    @Body() body: { masterKey: string },
+    @Req() req: { user: { role: string } },
+  ) {
+    if (req.user?.role !== 'admin') {
+      throw new ForbiddenException('Solo el admin puede ver las contraseñas.');
+    }
+    if (!body || body.masterKey !== ADMIN_MASTER_KEY) {
+      throw new ForbiddenException('Clave maestra incorrecta.');
+    }
+    const list = await this.usersService.listWithPasswords();
+    return list
+      .map((u) => ({
+        id: (u._id as { toString(): string }).toString(),
+        username: u.username,
+        name: u.name,
+        lastName: u.lastName,
+        role: u.role,
+        // undefined si el usuario es previo al feature: el frontend muestra
+        // "(sin registro — resetear para verla)".
+        password: u.passwordPlain ?? null,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 }
