@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -12,6 +13,8 @@ import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -48,11 +51,21 @@ export class AuthService {
         name: created.name,
         tv: 0,
       };
+      // Mail de bienvenida — mejor esfuerzo, no bloquea el registro si falla.
+      if (created.email) {
+        try {
+          await this.mailService.sendWelcomeEmail(created.email, created.name);
+        } catch (err) {
+          this.logger.warn(`No se pudo enviar mail de bienvenida: ${err instanceof Error ? err.message : err}`);
+        }
+      }
+
       return {
         access_token: await this.jwtService.signAsync(payload),
         user: {
           id: (created._id as { toString(): string }).toString(),
           username: created.username,
+          email: created.email,
           name: created.name,
           lastName: created.lastName,
           instrument: created.instrument,
@@ -146,6 +159,7 @@ export class AuthService {
   private async buildLoginResponse(user: {
     _id: { toString(): string };
     username: string;
+    email?: string;
     name: string;
     lastName?: string;
     instrument?: string;
@@ -166,6 +180,7 @@ export class AuthService {
       user: {
         id: user._id.toString(),
         username: user.username,
+        email: user.email,
         name: user.name,
         lastName: user.lastName,
         instrument: user.instrument,

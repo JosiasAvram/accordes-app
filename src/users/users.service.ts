@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 
 import { User, UserDocument } from './schemas/user.schema';
+import { MailService } from '../mail/mail.service';
 
 interface CreateUserInput {
   username: string;
@@ -30,8 +31,11 @@ export interface SafeUser {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    private readonly mailService: MailService,
   ) {}
 
   async findByUsername(username: string): Promise<UserDocument | null> {
@@ -132,6 +136,21 @@ export class UsersService {
       .exec();
     if (result.matchedCount === 0) {
       throw new NotFoundException('Usuario no encontrado');
+    }
+
+    // Notificar al user por mail — mejor esfuerzo, si Brevo falla no rompe
+    // el reset. Un solo enganche aca cubre reset del admin, change-password
+    // logueado y reset con codigo (todos pasan por este metodo).
+    try {
+      const user = await this.userModel
+        .findById(id, 'email name')
+        .lean<{ email?: string; name?: string }>()
+        .exec();
+      if (user?.email) {
+        await this.mailService.sendPasswordChangedAlert(user.email, user.name ?? 'Usuario');
+      }
+    } catch (err) {
+      this.logger.warn(`No se pudo notificar el cambio de password: ${err instanceof Error ? err.message : err}`);
     }
   }
 
