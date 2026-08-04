@@ -4,6 +4,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Logger,
   NotFoundException,
   Param,
   Patch,
@@ -18,6 +19,7 @@ import { Model } from 'mongoose';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User, UserDocument } from './schemas/user.schema';
 import { UsersService } from './users.service';
+import { MailService } from '../mail/mail.service';
 
 const VALID_ROLES = ['admin', 'lider', 'miembro', 'contributor', 'user', 'none'] as const;
 type Role = (typeof VALID_ROLES)[number];
@@ -30,9 +32,12 @@ const ADMIN_MASTER_KEY = process.env.ADMIN_MASTER_KEY ?? '35531716';
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
+
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
     private readonly usersService: UsersService,
+    private readonly mailService: MailService,
   ) {}
 
   @Get()
@@ -85,15 +90,35 @@ export class UsersController {
     }
     // Setea el nuevo rol Y bumpea tokenVersion en la misma operacion para
     // invalidar las sesiones del usuario al instante.
-    const result = await this.userModel
-      .updateOne(
+    // Usamos findOneAndUpdate con new:false para recuperar el rol/email
+    // previos y poder mandar el mail apropiado sin hacer una query extra.
+    const previous = await this.userModel
+      .findOneAndUpdate(
         { _id: id },
         { $set: { role: body.role }, $inc: { tokenVersion: 1 } },
+        { new: false },
       )
       .exec();
-    if (result.matchedCount === 0) {
+    if (!previous) {
       throw new NotFoundException('Usuario no encontrado');
     }
+
+    // Notificar por mail — mejor esfuerzo, no bloquea la operacion si falla.
+    // Solo si el rol realmente cambio (no vale la pena si el admin hizo
+    // "cambiar" al mismo rol por error).
+    if (previous.email && previous.role !== body.role) {
+      try {
+        await this.mailService.sendRoleChangeAlert(
+          previous.email,
+          previous.name,
+          previous.role,
+          body.role,
+        );
+      } catch (err) {
+        this.logger.warn(`No se pudo enviar mail de cambio de rol: ${err instanceof Error ? err.message : err}`);
+      }
+    }
+
     return { ok: true, role: body.role, loggedOut: true };
   }
 

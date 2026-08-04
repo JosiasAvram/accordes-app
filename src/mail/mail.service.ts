@@ -98,6 +98,13 @@ declare module './mail.service' {
   interface MailService {
     sendWelcomeEmail(to: string, name: string): Promise<void>;
     sendPasswordChangedAlert(to: string, name: string): Promise<void>;
+    /**
+     * Envia el mail apropiado segun el tipo de cambio de rol:
+     *   - previous='none' y new!='none' → mail de "¡Aprobado!"
+     *   - previous!='none' y new='none' → mail de "Acceso restringido"
+     *   - otro caso → mail generico "Tu rol cambio a X"
+     */
+    sendRoleChangeAlert(to: string, name: string, previousRole: string, newRole: string): Promise<void>;
   }
 }
 
@@ -148,6 +155,86 @@ MailService.prototype.sendPasswordChangedAlert = async function (
   const text = `Hola ${name},\n\nLa contraseña de tu cuenta en Letras y Acordes fue modificada.\n\nSi no fuiste vos, cambiala inmediatamente desde Ajustes → Cambiar contraseña.`;
   await sendViaBrevo(this, to, name, subject, html, text);
 };
+
+MailService.prototype.sendRoleChangeAlert = async function (
+  this: MailService,
+  to: string,
+  name: string,
+  previousRole: string,
+  newRole: string,
+) {
+  if (!(this as unknown as { apiKey: string }).apiKey && !process.env.BREVO_API_KEY) return;
+
+  // Elegimos template segun el tipo de transicion
+  let subject: string;
+  let html: string;
+  let text: string;
+
+  if (previousRole === 'none' && newRole !== 'none') {
+    // APROBACION
+    subject = '¡Ya podés usar Letras y Acordes!';
+    html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #FAF3E0; color: #1a1a1a;">
+        <h2 style="color: #16a34a; margin-top: 0;">🎉 ¡Aprobado, ${escapeHtml(name)}!</h2>
+        <p>El admin acaba de habilitar tu cuenta. Ya podés iniciar sesión y usar la app.</p>
+        <div style="background: #fff; border-left: 4px solid #16a34a; padding: 12px; border-radius: 4px; margin: 16px 0;">
+          <p style="margin: 0;">Tu rol asignado es: <strong>${escapeHtml(roleLabel(newRole))}</strong></p>
+        </div>
+        <p>Si tenías la app abierta en la pantalla de "Pendiente de aprobación", va a desbloquearse sola en unos segundos. Si no, cerrala y volvé a abrirla.</p>
+        <p style="font-size: 12px; color: #999; margin-top: 24px;">Este mail se envía automáticamente cada vez que se aprueba una cuenta nueva.</p>
+      </div>
+    `;
+    text = `¡Aprobado ${name}!\n\nEl admin habilitó tu cuenta. Ya podés usar la app. Rol asignado: ${roleLabel(newRole)}.`;
+  } else if (previousRole !== 'none' && newRole === 'none') {
+    // REVOCACION
+    subject = 'Tu acceso a Letras y Acordes fue restringido';
+    html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #FAF3E0; color: #1a1a1a;">
+        <h2 style="color: #dc2626; margin-top: 0;">Hola ${escapeHtml(name)},</h2>
+        <p>Te avisamos que el admin cambió tu rol y por ahora <strong>no vas a poder usar la app</strong>.</p>
+        <p>Si abrís la app vas a ver una pantalla de "Pendiente de aprobación" hasta que el admin te vuelva a habilitar.</p>
+        <div style="background: #fff; border-left: 4px solid #dc2626; padding: 12px; border-radius: 4px; margin: 16px 0; font-size: 13px;">
+          Si creés que fue un error, contactá al admin.
+        </div>
+        <p style="font-size: 12px; color: #999; margin-top: 24px;">Este mail se envía automáticamente cuando cambia tu nivel de acceso.</p>
+      </div>
+    `;
+    text = `Hola ${name},\n\nEl admin restringió tu acceso a Letras y Acordes. Contactá al admin si creés que fue un error.`;
+  } else {
+    // CAMBIO GENERICO (miembro→lider, lider→admin, etc)
+    subject = `Tu rol en Letras y Acordes cambió a ${roleLabel(newRole)}`;
+    html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #FAF3E0; color: #1a1a1a;">
+        <h2 style="color: #F59E0B; margin-top: 0;">Hola ${escapeHtml(name)},</h2>
+        <p>El admin actualizó tu rol en <strong>Letras y Acordes</strong>.</p>
+        <div style="background: #fff; border-left: 4px solid #F59E0B; padding: 12px; border-radius: 4px; margin: 16px 0;">
+          <p style="margin: 0;">Antes: <strong>${escapeHtml(roleLabel(previousRole))}</strong></p>
+          <p style="margin: 6px 0 0 0;">Ahora: <strong>${escapeHtml(roleLabel(newRole))}</strong></p>
+        </div>
+        <p>Tu sesión actual fue cerrada por seguridad. La próxima vez que abras la app vas a tener que iniciar sesión de nuevo.</p>
+        <p style="font-size: 12px; color: #999; margin-top: 24px;">Este mail se envía automáticamente cuando cambia tu rol.</p>
+      </div>
+    `;
+    text = `Hola ${name},\n\nEl admin cambió tu rol de "${roleLabel(previousRole)}" a "${roleLabel(newRole)}". Tu sesión fue cerrada por seguridad.`;
+  }
+
+  await sendViaBrevo(this, to, name, subject, html, text);
+};
+
+/**
+ * Convierte el rol de la DB al label amigable para mostrar al user.
+ */
+function roleLabel(role: string): string {
+  switch (role) {
+    case 'admin': return 'Admin';
+    case 'lider': return 'Líder';
+    case 'miembro': return 'Miembro';
+    case 'contributor': return 'Contribuidor';
+    case 'user': return 'Usuario';
+    case 'none': return 'Pendiente';
+    default: return role;
+  }
+}
 
 /**
  * Helper interno: encapsula la llamada HTTP a Brevo para no repetir codigo.
