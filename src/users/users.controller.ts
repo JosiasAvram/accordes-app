@@ -175,4 +175,24 @@ export class UsersController {
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }
+
+  @Patch('me/email')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Actualiza el email del usuario logueado.' })
+  async updateMyEmail(
+    @Body() body: { email: string },
+    @Req() req: { user: { sub: string } },
+  ) {
+    if (!body?.email) {
+      throw new BadRequestException('Falta el email.');
+    }
+    try {
+      await this.usersService.updateEmail(req.user.sub, body.email);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo actualizar el email.';
+      throw new BadRequestException(msg);
+    }
+    return { ok: true, email: body.email.trim().toLowerCase() };
+  }
 }

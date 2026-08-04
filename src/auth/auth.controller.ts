@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
@@ -46,5 +54,47 @@ export class AuthController {
       instrument: user.instrument,
       role: user.role,
     };
+  }
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Inicia recuperación de contraseña (envía código por mail).' })
+  forgotPassword(@Body() body: { identifier: string }) {
+    return this.authService.forgotPassword(body?.identifier ?? '');
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Valida código recibido por mail y setea nueva contraseña.' })
+  resetPassword(
+    @Body() body: { identifier: string; code: string; newPassword: string },
+  ) {
+    return this.authService.resetPasswordWithCode(
+      body?.identifier ?? '',
+      body?.code ?? '',
+      body?.newPassword ?? '',
+    );
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cambia la contraseña del usuario logueado (valida la actual).' })
+  async changePassword(
+    @Body() body: { currentPassword: string; newPassword: string },
+    @Req() req: { user: { sub: string } },
+  ) {
+    if (!body?.currentPassword || !body?.newPassword) {
+      throw new BadRequestException('Faltan datos.');
+    }
+    try {
+      await this.usersService.changePassword(
+        req.user.sub,
+        body.currentPassword,
+        body.newPassword,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo cambiar la contraseña.';
+      throw new BadRequestException(msg);
+    }
+    return { ok: true };
   }
 }

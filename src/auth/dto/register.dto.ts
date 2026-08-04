@@ -1,5 +1,5 @@
-import { IsIn, IsOptional, IsString, MinLength, Matches } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsIn, IsString, MinLength, Matches } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 const INSTRUMENTS = ['guitarra', 'bajo', 'piano', 'voz', 'bateria'] as const;
 export type Instrument = typeof INSTRUMENTS[number];
@@ -32,8 +32,7 @@ export class RegisterDto {
   @IsIn(INSTRUMENTS as unknown as string[])
   instrument!: Instrument;
 
-  @ApiPropertyOptional({ example: 'juan@example.com' })
-  @IsOptional()
-  @IsString()
-  email?: string;
+  @ApiProperty({ example: 'juan@example.com', description: 'Requerido para recuperación de contraseña' })
+  @IsEmail({}, { message: 'Email inválido.' })
+  email!: string;
 }

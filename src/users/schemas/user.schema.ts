@@ -55,6 +55,15 @@ export class User {
   // hace logout automatico via su interceptor.
   @Prop({ default: 0 })
   tokenVersion!: number;
+
+  // Hash bcrypt del codigo de recuperacion de password (6 digitos) enviado
+  // por mail. Se guarda el hash y no el codigo en claro. Se limpia al usar.
+  @Prop({ select: false })
+  passwordResetCodeHash?: string;
+
+  // Timestamp de expiracion del codigo (15 min desde emision).
+  @Prop({ select: false })
+  passwordResetExpiresAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

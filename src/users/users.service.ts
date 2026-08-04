@@ -38,6 +38,18 @@ export class UsersService {
     return this.userModel.findOne({ username: username.toLowerCase() }).exec();
   }
 
+  /**
+   * Busca un usuario por username O por email. Se usa en el flujo "olvide
+   * mi contraseña" — el user puede escribir cualquiera de los dos.
+   */
+  async findByUsernameOrEmail(identifier: string): Promise<UserDocument | null> {
+    const value = identifier.trim().toLowerCase();
+    return this.userModel
+      .findOne({ $or: [{ username: value }, { email: value }] })
+      .select('+passwordResetCodeHash +passwordResetExpiresAt')
+      .exec();
+  }
+
   async findById(id: string): Promise<SafeUser> {
     const user = await this.userModel.findById(id).lean().exec();
     if (!user) throw new NotFoundException('Usuario no encontrado');
@@ -134,5 +146,64 @@ export class UsersService {
       .select('+passwordPlain')
       .lean()
       .exec();
+  }
+
+  /**
+   * Guarda el hash del codigo de recuperacion + expiracion (15 min).
+   */
+  async setPasswordResetCode(id: string, codeHash: string): Promise<void> {
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+    await this.userModel
+      .updateOne(
+        { _id: id },
+        { $set: { passwordResetCodeHash: codeHash, passwordResetExpiresAt: expires } },
+      )
+      .exec();
+  }
+
+  /**
+   * Limpia el codigo de recuperacion (tras uso exitoso o expiracion).
+   */
+  async clearPasswordResetCode(id: string): Promise<void> {
+    await this.userModel
+      .updateOne(
+        { _id: id },
+        { $unset: { passwordResetCodeHash: '', passwordResetExpiresAt: '' } },
+      )
+      .exec();
+  }
+
+  /**
+   * Actualiza el email de un usuario. Valida formato basico y unicidad.
+   */
+  async updateEmail(id: string, newEmail: string): Promise<void> {
+    const email = newEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error('Email inválido.');
+    }
+    // Chequeamos que no lo tenga ya otro usuario
+    const existing = await this.userModel.findOne({ email, _id: { $ne: id } }).exec();
+    if (existing) {
+      throw new Error('Ese email ya está en uso por otro usuario.');
+    }
+    const result = await this.userModel.updateOne({ _id: id }, { $set: { email } }).exec();
+    if (result.matchedCount === 0) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+  }
+
+  /**
+   * Cambia la password validando la password actual del usuario.
+   * Se usa en la pantalla "Cambiar contraseña" (user logueado).
+   */
+  async changePassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
+    if (!newPassword || newPassword.length < 4) {
+      throw new Error('La nueva contraseña debe tener al menos 4 caracteres.');
+    }
+    const user = await this.userModel.findById(id).exec();
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) throw new Error('La contraseña actual no es correcta.');
+    await this.resetPassword(id, newPassword);
   }
 }
