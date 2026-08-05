@@ -64,6 +64,23 @@ export class User {
   // Timestamp de expiracion del codigo (15 min desde emision).
   @Prop({ select: false })
   passwordResetExpiresAt?: Date;
+
+  // Confirmacion de que el email del usuario es real y accesible por el.
+  // Se setea false para nuevos registros → el user tiene que ingresar el
+  // codigo enviado al mail para pasar a ser TRUE. Los usuarios existentes
+  // antes de este feature quedan con TRUE por default (retrocompatibilidad
+  // — no queremos obligarlos a re-verificar).
+  @Prop({ default: true })
+  emailVerified!: boolean;
+
+  // Hash bcrypt del codigo de verificacion de email (6 digitos). Similar
+  // al passwordResetCodeHash pero para verificar el mail al registrarse.
+  @Prop({ select: false })
+  emailVerificationCodeHash?: string;
+
+  // Expiracion del codigo (1 hora desde emision).
+  @Prop({ select: false })
+  emailVerificationExpiresAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

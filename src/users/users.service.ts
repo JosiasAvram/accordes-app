@@ -14,6 +14,9 @@ interface CreateUserInput {
   email?: string;
   instrument?: 'guitarra' | 'bajo' | 'piano' | 'voz' | 'bateria';
   role?: 'admin' | 'contributor' | 'user' | 'miembro' | 'lider' | 'none';
+  // Si es un registro desde la app publica → false (requiere verificar mail).
+  // Si es admin seed / migracion → true.
+  emailVerified?: boolean;
 }
 
 // Tipo público de usuario (sin password hash).
@@ -80,6 +83,7 @@ export class UsersService {
       email: input.email?.toLowerCase(),
       instrument: input.instrument,
       role: input.role ?? 'miembro',
+      emailVerified: input.emailVerified ?? true,
     });
     const obj = created.toObject();
     const { passwordHash: _, ...rest } = obj;
@@ -209,6 +213,50 @@ export class UsersService {
     if (result.matchedCount === 0) {
       throw new NotFoundException('Usuario no encontrado');
     }
+  }
+
+  /**
+   * Guarda el hash del codigo de verificacion de email + expiracion (1h).
+   * Se usa en el registro y al pedir "reenviar codigo".
+   */
+  async setEmailVerificationCode(id: string, codeHash: string): Promise<void> {
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+    await this.userModel
+      .updateOne(
+        { _id: id },
+        {
+          $set: {
+            emailVerificationCodeHash: codeHash,
+            emailVerificationExpiresAt: expires,
+          },
+        },
+      )
+      .exec();
+  }
+
+  /**
+   * Marca el email como verificado y limpia los campos del codigo.
+   */
+  async markEmailVerified(id: string): Promise<void> {
+    await this.userModel
+      .updateOne(
+        { _id: id },
+        {
+          $set: { emailVerified: true },
+          $unset: { emailVerificationCodeHash: '', emailVerificationExpiresAt: '' },
+        },
+      )
+      .exec();
+  }
+
+  /**
+   * Busca al user por id incluyendo los campos ocultos de verificacion de email.
+   */
+  async findByIdWithVerification(id: string) {
+    return this.userModel
+      .findById(id)
+      .select('+emailVerificationCodeHash +emailVerificationExpiresAt')
+      .exec();
   }
 
   /**

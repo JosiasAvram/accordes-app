@@ -53,6 +53,7 @@ export class AuthController {
       lastName: user.lastName,
       instrument: user.instrument,
       role: user.role,
+      emailVerified: (user as { emailVerified?: boolean }).emailVerified ?? true,
     };
   }
 
@@ -96,5 +97,24 @@ export class AuthController {
       throw new BadRequestException(msg);
     }
     return { ok: true };
+  }
+
+  @Post('verify-email')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verifica el email del usuario con el código recibido.' })
+  verifyEmail(
+    @Body() body: { code: string },
+    @Req() req: { user: { sub: string } },
+  ) {
+    return this.authService.verifyEmail(req.user.sub, body?.code ?? '');
+  }
+
+  @Post('resend-verification')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reenvía el código de verificación de email.' })
+  resendVerification(@Req() req: { user: { sub: string } }) {
+    return this.authService.resendVerification(req.user.sub);
   }
 }

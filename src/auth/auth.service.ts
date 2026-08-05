@@ -41,6 +41,9 @@ export class AuthService {
         // Los registros desde la app arrancan con rol 'none' = pendiente.
         // El admin debe aprobarlos cambiandoles el rol a miembro/lider/etc.
         role: 'none',
+        // Nuevos users deben verificar su mail primero antes de que el
+        // admin pueda aprobarlos.
+        emailVerified: false,
       });
       // Devolvemos también un token, así el usuario queda logueado al instante.
       // tv=0 porque acabamos de crear el usuario (tokenVersion default = 0).
@@ -51,10 +54,17 @@ export class AuthService {
         name: created.name,
         tv: 0,
       };
-      // Mail de bienvenida — mejor esfuerzo, no bloquea el registro si falla.
+      // Generar codigo de verificacion de email (6 digitos, 1h de expiracion).
+      const verificationCode = generateSixDigitCode();
+      const codeHash = await bcrypt.hash(verificationCode, 10);
+      const userId = (created._id as { toString(): string }).toString();
+      await this.usersService.setEmailVerificationCode(userId, codeHash);
+
+      // Mail de bienvenida CON el codigo — mejor esfuerzo, no bloquea el
+      // registro si Brevo falla (el user puede reenviar despues).
       if (created.email) {
         try {
-          await this.mailService.sendWelcomeEmail(created.email, created.name);
+          await this.mailService.sendWelcomeEmail(created.email, created.name, verificationCode);
         } catch (err) {
           this.logger.warn(`No se pudo enviar mail de bienvenida: ${err instanceof Error ? err.message : err}`);
         }
@@ -63,13 +73,14 @@ export class AuthService {
       return {
         access_token: await this.jwtService.signAsync(payload),
         user: {
-          id: (created._id as { toString(): string }).toString(),
+          id: userId,
           username: created.username,
           email: created.email,
           name: created.name,
           lastName: created.lastName,
           instrument: created.instrument,
           role: created.role,
+          emailVerified: false,
         },
         message: 'Usuario registrado con éxito',
       };
@@ -156,6 +167,53 @@ export class AuthService {
     return { ok: true };
   }
 
+  /**
+   * Verifica el codigo de email enviado al registrarse.
+   * Si es correcto, marca emailVerified=true y limpia los campos del codigo.
+   */
+  async verifyEmail(userId: string, code: string) {
+    if (!code || code.trim().length !== 6) {
+      throw new BadRequestException('El código debe tener 6 dígitos.');
+    }
+    const user = await this.usersService.findByIdWithVerification(userId);
+    if (!user) throw new BadRequestException('Usuario no encontrado.');
+    if (user.emailVerified) return { ok: true, alreadyVerified: true };
+    if (!user.emailVerificationCodeHash || !user.emailVerificationExpiresAt) {
+      throw new BadRequestException('No hay un código pendiente. Pedí uno nuevo.');
+    }
+    if (user.emailVerificationExpiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('El código expiró. Pedí uno nuevo.');
+    }
+    const ok = await bcrypt.compare(code.trim(), user.emailVerificationCodeHash);
+    if (!ok) throw new BadRequestException('Código incorrecto.');
+    await this.usersService.markEmailVerified(userId);
+    return { ok: true, alreadyVerified: false };
+  }
+
+  /**
+   * Genera un codigo nuevo y lo reenvía por mail. Usable si el user perdio
+   * el codigo original o si expiro.
+   */
+  async resendVerification(userId: string) {
+    const user = await this.usersService.findByIdWithVerification(userId);
+    if (!user) throw new BadRequestException('Usuario no encontrado.');
+    if (user.emailVerified) return { ok: true, alreadyVerified: true };
+    if (!user.email) {
+      throw new BadRequestException('No tenés un email cargado.');
+    }
+    const code = generateSixDigitCode();
+    const codeHash = await bcrypt.hash(code, 10);
+    await this.usersService.setEmailVerificationCode(userId, codeHash);
+    try {
+      await this.mailService.sendWelcomeEmail(user.email, user.name, code);
+    } catch (err) {
+      throw new BadRequestException(
+        'No pudimos enviar el email. Probá de nuevo en un rato o contactá al admin.',
+      );
+    }
+    return { ok: true, alreadyVerified: false };
+  }
+
   private async buildLoginResponse(user: {
     _id: { toString(): string };
     username: string;
@@ -165,6 +223,7 @@ export class AuthService {
     instrument?: string;
     role: string;
     tokenVersion?: number;
+    emailVerified?: boolean;
   }) {
     // Incluimos tokenVersion para que el JwtStrategy pueda invalidar
     // tokens viejos cuando el admin desloguea al usuario.
@@ -185,6 +244,7 @@ export class AuthService {
         lastName: user.lastName,
         instrument: user.instrument,
         role: user.role,
+        emailVerified: user.emailVerified ?? true,
       },
     };
   }

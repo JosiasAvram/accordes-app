@@ -49,17 +49,19 @@ export class UsersController {
   async listAll() {
     const users = await this.userModel
       .find()
-      .select('username name lastName instrument role')
+      .select('username email name lastName instrument role emailVerified')
       .sort({ name: 1 })
       .lean()
       .exec();
     return users.map((u) => ({
       id: (u._id as { toString(): string }).toString(),
       username: u.username,
+      email: u.email,
       name: u.name,
       lastName: u.lastName,
       instrument: u.instrument,
       role: u.role,
+      emailVerified: u.emailVerified ?? true,
     }));
   }
 
@@ -88,6 +90,22 @@ export class UsersController {
         'No podés sacarte el rol de admin a vos mismo. Pedile a otro admin que lo haga.',
       );
     }
+    // Antes de cambiar el rol, verificar que el user haya confirmado su mail.
+    // Un user con emailVerified=false no puede pasar de 'none' porque:
+    //   - Podria no ser el dueño real de ese mail (typo).
+    //   - Si el admin lo aprueba y despues no puede recuperar la contraseña,
+    //     queda bloqueado.
+    // Excepcion: siempre podemos poner en 'none' (por si un admin quiere revocar).
+    const target = await this.userModel.findById(id).select('emailVerified role email name').exec();
+    if (!target) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    if (!target.emailVerified && body.role !== 'none') {
+      throw new BadRequestException(
+        'Este usuario todavía no verificó su email. Pedile que ingrese el código que le llegó al correo antes de aprobarlo.',
+      );
+    }
+
     // Setea el nuevo rol Y bumpea tokenVersion en la misma operacion para
     // invalidar las sesiones del usuario al instante.
     // Usamos findOneAndUpdate con new:false para recuperar el rol/email

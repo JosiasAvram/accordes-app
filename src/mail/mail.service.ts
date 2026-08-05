@@ -96,7 +96,11 @@ function escapeHtml(str: string): string {
  */
 declare module './mail.service' {
   interface MailService {
-    sendWelcomeEmail(to: string, name: string): Promise<void>;
+    /**
+     * Mail de bienvenida al registrarse. Si viene verificationCode, se
+     * incluye para que el user verifique su email.
+     */
+    sendWelcomeEmail(to: string, name: string, verificationCode?: string): Promise<void>;
     sendPasswordChangedAlert(to: string, name: string): Promise<void>;
     /**
      * Envia el mail apropiado segun el tipo de cambio de rol:
@@ -112,23 +116,34 @@ MailService.prototype.sendWelcomeEmail = async function (
   this: MailService,
   to: string,
   name: string,
+  verificationCode?: string,
 ) {
   if (!(this as unknown as { apiKey: string }).apiKey && !process.env.BREVO_API_KEY) {
-    // Silencioso: si no hay API key configurada, no rompemos el registro.
     return;
   }
-  const subject = '¡Bienvenido a Letras y Acordes!';
+  const subject = '¡Bienvenido a Letras y Acordes! Verificá tu email';
+  const codeBlock = verificationCode
+    ? `
+      <p>Antes de usar la app, verificá que este email es tuyo ingresando este código:</p>
+      <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; text-align: center; background: #fff; border: 2px dashed #F59E0B; padding: 16px; border-radius: 12px; margin: 20px 0;">
+        ${escapeHtml(verificationCode)}
+      </div>
+      <p style="font-size: 13px; color: #555;">Este código vence en <strong>1 hora</strong>. Después de verificar, el admin va a poder aprobarte para usar la app.</p>
+    `
+    : '';
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; background: #FAF3E0; color: #1a1a1a;">
       <h2 style="color: #F59E0B; margin-top: 0;">¡Hola ${escapeHtml(name)}!</h2>
       <p>Bienvenido a <strong>Letras y Acordes</strong>, la app de tu banda.</p>
-      <p>Tu cuenta fue creada correctamente. Ahora estás esperando que el administrador te apruebe para poder ver las canciones, la reunión, los eventos y todo lo demás.</p>
-      <p>Apenas te aprueben, la app se va a desbloquear automáticamente y vas a poder empezar a usarla.</p>
-      <p style="font-size: 13px; color: #666;">Si querés acelerar la aprobación, avisale al admin.</p>
+      ${codeBlock}
+      <p>Después de verificar el email, el admin tiene que aprobarte para poder ver las canciones, la reunión, los eventos y todo lo demás.</p>
+      <p style="font-size: 13px; color: #666;">Si querés acelerar la aprobación, avisale al admin cuando termines de verificar.</p>
       <p style="font-size: 12px; color: #999; margin-top: 24px;">Este mail es automático. Si no te registraste, ignoralo o contactá al administrador de la app.</p>
     </div>
   `;
-  const text = `¡Bienvenido ${name}!\n\nTu cuenta en Letras y Acordes fue creada. Estás esperando aprobación del admin para empezar a usar la app.`;
+  const text = verificationCode
+    ? `¡Bienvenido ${name}!\n\nTu código de verificación de email es: ${verificationCode}\n\nEste código vence en 1 hora.`
+    : `¡Bienvenido ${name}!\n\nTu cuenta en Letras y Acordes fue creada.`;
   await sendViaBrevo(this, to, name, subject, html, text);
 };
 
